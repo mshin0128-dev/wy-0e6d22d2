@@ -45,6 +45,8 @@
   --close: #A3660A;
   --fix-wrong: #C62828;
   --fix-wrong-bg: rgba(198,40,40,0.1);
+  --fix-minor: #5C4A00;
+  --fix-minor-bg: rgba(245, 210, 20, 0.48);
   --fix-right: #1B7A4A;
   --fix-right-bg: rgba(27,122,74,0.1);
   --kb: 0px;
@@ -70,6 +72,8 @@ html[data-theme="dark"] {
   --close: #E7B169;
   --fix-wrong: #FF8A9A;
   --fix-wrong-bg: rgba(255,138,154,0.14);
+  --fix-minor: #F8E56A;
+  --fix-minor-bg: rgba(245, 210, 30, 0.24);
   --fix-right: #7DDBA8;
   --fix-right-bg: rgba(125,219,168,0.14);
 }
@@ -208,12 +212,17 @@ html[data-theme="dark"] .grade-progress-fill { background: linear-gradient(135de
 .ai-box ul { margin: 2px 0 0; padding-left: 18px; }
 .ai-box li { font-size: 14px; margin-bottom: 2px; overflow-wrap: anywhere; }
 .fix-wrong { color: var(--fix-wrong); background: var(--fix-wrong-bg); border-radius: 4px; padding: 0 3px; font-weight: 700; }
+.fix-minor { color: var(--fix-minor); background: var(--fix-minor-bg); border-radius: 4px; padding: 0 3px; font-weight: 700; }
 .fix-right { color: var(--fix-right); background: var(--fix-right-bg); border-radius: 4px; padding: 0 3px; font-weight: 700; }
 .fix-arrow { color: var(--sub); margin: 0 4px; flex: none; }
 .fix-list { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .fix-row { border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; }
 .fix-row .fix-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 14px; overflow-wrap: anywhere; }
+.fix-row .fix-row-tag { font-size: 11px; margin-right: 4px; }
 .fix-row .fix-row-reason { margin-top: 4px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
+.fix-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 8px 0 0; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; min-width: 0; }
+.fix-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.fix-legend-swatch { display: inline-block; width: 14px; height: 14px; flex: none; padding: 0; border-radius: 4px; }
 .finish-box { margin-top: 14px; padding: 14px; border-radius: 14px; background: var(--tab-pill-bg); }
 .finish-box h3 { margin: 0 0 8px; font-size: 15px; }
 .finish-box p { margin: 0; font-size: 13px; color: var(--sub); }
@@ -400,6 +409,10 @@ nav.tabbar.is-hidden { display: none; }
         <div class="ja-block">
           <span class="jb-label">あなたの訳</span>
           <p id="userJa"></p>
+          <div class="fix-legend" id="fixLegend" style="display:none;">
+            <span class="fix-legend-item"><span class="fix-wrong fix-legend-swatch"></span>赤＝間違い</span>
+            <span class="fix-legend-item"><span class="fix-minor fix-legend-swatch"></span>黄＝惜しい</span>
+          </div>
         </div>
         <div class="ja-block" style="margin-bottom:0;">
           <span class="jb-label">模範訳</span>
@@ -527,7 +540,7 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16f</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16g</p>
   </section>
 </div>
 
@@ -1142,8 +1155,14 @@ nav.tabbar.is-hidden { display: none; }
     startQuizPlay(state.quiz.range);
   });
 
+  // ---------- Fix legend ----------
+  function setFixLegendVisible(show) {
+    document.getElementById("fixLegend").style.display = show ? "" : "none";
+  }
+
   // ---------- Self grade ----------
   function showSelfGrade() {
+    setFixLegendVisible(false);
     document.getElementById("selfGrade").style.display = "";
     document.getElementById("nextQuizBtn").style.display = "none";
     Array.prototype.forEach.call(document.querySelectorAll(".grade-btn"), function (b) { b.classList.remove("selected"); });
@@ -1164,7 +1183,7 @@ nav.tabbar.is-hidden { display: none; }
 
   function buildGradePrompt(passage, answerText) {
     return [
-      "あなたは英語学習者の和訳を採点する先生です。",
+      "あなたは英語学習者の和訳を採点する、やさしい先生です。",
       "次の英文と模範訳、学習者の訳を比較して、学習者の訳を100点満点で採点してください。",
       "",
       "英文:",
@@ -1177,13 +1196,18 @@ nav.tabbar.is-hidden { display: none; }
       answerText || "（未回答）",
       "",
       "採点基準:",
-      "- score は学習者の訳と模範訳を比較した結果を0から100の整数で表してください。意味が十分に通じて正確なほど高得点にしてください。",
+      "- 意味が正しく伝わっていれば高得点にしてください。",
+      "- 言い回しの違い、自然な意訳、語順の違いは、意味が同じであれば減点しないか、減点してもごく小さくしてください。模範訳とまったく同じ言葉を使っていなくても、意味が同じなら正解として扱ってください。",
+      "- fixes[].level は \"wrong\" か \"minor\" のどちらかにしてください。",
+      "  - \"wrong\": 意味が違う、訳し落とし、誤訳など、完全な間違い。",
+      "  - \"minor\": 意味は合っているが、言い回し・語順・不自然さ・細かい語の選択などの小さな誤り。",
+      "- 減点は主に wrong（意味の誤りや訳し落とし）を対象にしてください。minor は1つあたり数点程度のごく小さな減点にとどめてください。",
+      "- fixes[].wrong には学習者の訳の中に実際に含まれている文言を、できるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えないでください）。right には模範訳の中の対応する表現を、模範訳の文言からそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えたり自分で新しい言い回しを作ったりしないでください）。reason には短い理由を入れてください。",
       "- comment には総評を短い日本語で書いてください。",
-      "- fixes は学習者の訳の中で直すべき表現のリストです。各要素の wrong には学習者の訳の中に実際に含まれている文言を、できるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えないでください）。right には模範訳の中の対応する正しい表現を、模範訳の文言からできるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えたり自分で新しい言い回しを作ったりしないでください）。reason には短い理由を入れてください。",
       "- 直すところが無ければ fixes は空配列にしてください。",
       "",
       "次のJSON形式だけで出力してください。説明文やコードフェンスは付けないでください。",
-      "{\"score\": 0から100の整数, \"comment\": \"総評（短い日本語）\", \"fixes\": [{\"wrong\": \"学習者の訳の中の間違っている表現\", \"right\": \"正しい表現\", \"reason\": \"短い理由\"}]}"
+      "{\"score\": 0から100の整数, \"comment\": \"総評（短い日本語）\", \"fixes\": [{\"wrong\": \"学習者の訳の中の間違っている表現\", \"right\": \"模範訳から抜き出した正しい表現\", \"reason\": \"短い理由\", \"level\": \"wrong または minor\"}]}"
     ].join("\n");
   }
 
@@ -1282,7 +1306,8 @@ nav.tabbar.is-hidden { display: none; }
       return {
         wrong: typeof f.wrong === "string" ? f.wrong : "",
         right: typeof f.right === "string" ? f.right : "",
-        reason: typeof f.reason === "string" ? f.reason : ""
+        reason: typeof f.reason === "string" ? f.reason : "",
+        level: f.level === "minor" ? "minor" : "wrong"
       };
     });
     return { score: score, comment: r.comment, fixes: fixes, grade: scoreToGrade(score) };
@@ -1298,8 +1323,11 @@ nav.tabbar.is-hidden { display: none; }
       list.innerHTML = '<li class="fix-row">直すところはありません</li>';
     } else {
       list.innerHTML = result.fixes.map(function (f) {
+        var levelClass = f.level === "minor" ? "fix-minor" : "fix-wrong";
+        var levelLabel = f.level === "minor" ? "惜しい" : "間違い";
         return '<li class="fix-row">' +
-          '<div class="fix-row-main"><span class="fix-wrong">' + escapeHtml(f.wrong) + '</span>' +
+          '<div class="fix-row-main"><span class="fix-row-tag ' + levelClass + '">' + levelLabel + '</span>' +
+          '<span class="' + levelClass + '">' + escapeHtml(f.wrong) + '</span>' +
           '<span class="fix-arrow">→</span><span class="fix-right">' + escapeHtml(f.right) + '</span></div>' +
           (f.reason ? '<div class="fix-row-reason">' + escapeHtml(f.reason) + '</div>' : '') +
           '</li>';
@@ -1321,7 +1349,7 @@ nav.tabbar.is-hidden { display: none; }
         var end = idx + wrong.length;
         var overlaps = ranges.some(function (r) { return idx < r.end && end > r.start; });
         if (!overlaps) {
-          ranges.push({ start: idx, end: end, right: fixes[i].right });
+          ranges.push({ start: idx, end: end, right: fixes[i].right, level: fixes[i].level === "minor" ? "minor" : "wrong" });
           found = true;
           break;
         }
@@ -1350,7 +1378,8 @@ nav.tabbar.is-hidden { display: none; }
     var last = 0;
     ranges.forEach(function (r) {
       html += escapeHtml(text.slice(last, r.start));
-      html += '<span class="fix-wrong">' + escapeHtml(text.slice(r.start, r.end)) + "</span>";
+      var levelClass = r.level === "minor" ? "fix-minor" : "fix-wrong";
+      html += '<span class="' + levelClass + '">' + escapeHtml(text.slice(r.start, r.end)) + "</span>";
       last = r.end;
     });
     html += escapeHtml(text.slice(last));
@@ -1486,6 +1515,7 @@ nav.tabbar.is-hidden { display: none; }
     document.getElementById("selfGrade").style.display = "none";
     document.getElementById("aiNote").style.display = "none";
     document.getElementById("aiPending").style.display = "none";
+    setFixLegendVisible(false);
     document.getElementById("finishMsg").style.display = "none";
     document.getElementById("nextQuizBtn").style.display = "none";
     document.getElementById("nextQuizBtn").textContent = "次の問題";
@@ -1512,6 +1542,7 @@ nav.tabbar.is-hidden { display: none; }
         renderUserJa(answer, norm.fixes);
         renderModelJa(q.ja, norm.fixes);
         renderAiBox(norm);
+        setFixLegendVisible(norm.fixes.length > 0);
         finalizeGrading(norm.grade, norm.score, "ai", norm);
       });
     }).catch(function (e) {
