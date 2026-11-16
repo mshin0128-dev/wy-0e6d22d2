@@ -1,5 +1,5 @@
 /* same-folder offline cache only */
-var CACHE_NAME = "wayaku-cache-v4";
+var CACHE_NAME = "wayaku-cache-v5";
 var SCOPE_URL = new URL("./", self.location.href);
 var ASSETS = [
   "./index.html",
