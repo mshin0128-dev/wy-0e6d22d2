@@ -43,6 +43,10 @@
   --danger: #D1456B;
   --good: #2E9B6B;
   --close: #A3660A;
+  --fix-wrong: #C62828;
+  --fix-wrong-bg: rgba(198,40,40,0.1);
+  --fix-right: #1B7A4A;
+  --fix-right-bg: rgba(27,122,74,0.1);
   --kb: 0px;
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -64,6 +68,10 @@ html[data-theme="dark"] {
   --danger: #E78098;
   --good: #67C79A;
   --close: #E7B169;
+  --fix-wrong: #FF8A9A;
+  --fix-wrong-bg: rgba(255,138,154,0.14);
+  --fix-right: #7DDBA8;
+  --fix-right-bg: rgba(125,219,168,0.14);
 }
 * { box-sizing: border-box; min-width: 0; }
 html { color-scheme: light; }
@@ -156,7 +164,10 @@ html[data-theme="dark"] .btn.primary { background: linear-gradient(135deg, #8A5A
 .passage-head-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .passage-id { font-size: 12px; color: var(--sub); }
 .passage-en { font-size: 17px; line-height: 1.6; overflow-wrap: anywhere; }
-.en-word { color: var(--accent); font-weight: 700; border-bottom: 1px dashed var(--accent); cursor: pointer; }
+.en-word { cursor: pointer; border-radius: 4px; -webkit-tap-highlight-color: transparent; }
+.en-word[data-no] { color: var(--accent); font-weight: 700; border-bottom: 1px dashed var(--accent); }
+.en-word.is-on { background: var(--tab-pill-bg); }
+.en-word[data-no].is-on { border-bottom-style: solid; }
 .speak-btn {
   flex: none; width: 36px; height: 36px; min-height: 0; border-radius: 10px; border: 1px solid var(--border);
   background: var(--card); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; padding: 0;
@@ -180,9 +191,13 @@ html[data-theme="dark"] .btn.primary { background: linear-gradient(135deg, #8A5A
 .grade-btn[data-grade="△"] { color: var(--close); }
 .grade-btn[data-grade="×"] { color: var(--danger); }
 .grade-btn.selected { background: var(--tab-pill-bg); border-color: var(--accent); }
-.ai-pending { display: flex; align-items: center; gap: 10px; padding: 14px; color: var(--sub); font-size: 14px; }
-.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); flex: none; animation: wayaku-spin 0.8s linear infinite; }
-@keyframes wayaku-spin { to { transform: rotate(360deg); } }
+.ai-pending { padding: 14px; color: var(--sub); font-size: 14px; min-width: 0; }
+.grade-progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.grade-progress-label { font-size: 14px; color: var(--sub); }
+.grade-progress-pct { font-size: 14px; font-weight: 700; color: var(--accent); flex: none; }
+.grade-progress-track { width: 100%; height: 10px; border-radius: 999px; background: var(--tab-pill-bg); overflow: hidden; min-width: 0; }
+.grade-progress-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(135deg, #C67A12, #E09A2C); transition: width 0.2s linear; }
+html[data-theme="dark"] .grade-progress-fill { background: linear-gradient(135deg, #8A5A10, #C67A12); }
 .result-stat-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .result-stat { flex: 1; min-width: 100px; background: var(--tab-pill-bg); border-radius: 14px; padding: 12px; text-align: center; }
 .result-stat .num { font-size: 26px; font-weight: 800; color: var(--accent); }
@@ -192,8 +207,13 @@ html[data-theme="dark"] .btn.primary { background: linear-gradient(135deg, #8A5A
 .ai-box .detail-label { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--tab-pill-bg); border-radius: 8px; padding: 2px 8px; margin-bottom: 4px; }
 .ai-box ul { margin: 2px 0 0; padding-left: 18px; }
 .ai-box li { font-size: 14px; margin-bottom: 2px; overflow-wrap: anywhere; }
-.ai-word-row { font-size: 13px; margin-bottom: 4px; overflow-wrap: anywhere; }
-.ai-word-row b { color: var(--accent); }
+.fix-wrong { color: var(--fix-wrong); background: var(--fix-wrong-bg); border-radius: 4px; padding: 0 3px; font-weight: 700; }
+.fix-right { color: var(--fix-right); background: var(--fix-right-bg); border-radius: 4px; padding: 0 3px; font-weight: 700; }
+.fix-arrow { color: var(--sub); margin: 0 4px; flex: none; }
+.fix-list { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.fix-row { border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.fix-row .fix-row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 14px; overflow-wrap: anywhere; }
+.fix-row .fix-row-reason { margin-top: 4px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
 .finish-box { margin-top: 14px; padding: 14px; border-radius: 14px; background: var(--tab-pill-bg); }
 .finish-box h3 { margin: 0 0 8px; font-size: 15px; }
 .finish-box p { margin: 0; font-size: 13px; color: var(--sub); }
@@ -361,6 +381,21 @@ nav.tabbar.is-hidden { display: none; }
     </div>
 
     <div id="quizResult" style="display:none;">
+      <div class="card passage-card">
+        <div class="passage-head-row">
+          <span class="passage-id" id="resultPassageId"></span>
+          <button type="button" class="speak-btn" id="resultSpeakBtn" aria-label="英文を読む">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 9v6h4l5 4V5L8 9H4z"></path>
+              <path d="M16.3 8.7a5 5 0 0 1 0 6.6"></path>
+              <path d="M19 6a8.5 8.5 0 0 1 0 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="passage-en" id="resultPassageEn"></div>
+        <div class="word-meaning-box" id="resultWordMeaning"></div>
+      </div>
+
       <div class="card" style="margin-bottom:14px;">
         <div class="ja-block">
           <span class="jb-label">あなたの訳</span>
@@ -373,7 +408,15 @@ nav.tabbar.is-hidden { display: none; }
       </div>
 
       <div class="card" id="aiPending" style="display:none;">
-        <div class="ai-pending"><span class="spinner" aria-hidden="true"></span><span>採点中...</span></div>
+        <div class="ai-pending">
+          <div class="grade-progress-row">
+            <span class="grade-progress-label">採点中...</span>
+            <span class="grade-progress-pct" id="gradeProgressPct">0%</span>
+          </div>
+          <div class="grade-progress-track" id="gradeProgressBar">
+            <div class="grade-progress-fill" id="gradeProgressFill"></div>
+          </div>
+        </div>
       </div>
 
       <p class="ai-note" id="aiNote" style="display:none;"></p>
@@ -384,20 +427,12 @@ nav.tabbar.is-hidden { display: none; }
           <div class="result-stat"><div class="num" id="aiGrade">-</div><div class="lbl">評価</div></div>
         </div>
         <div class="detail-line">
-          <span class="detail-label">良い点</span>
-          <ul id="aiGood"></ul>
-        </div>
-        <div class="detail-line">
-          <span class="detail-label">直す点</span>
-          <ul id="aiFix"></ul>
-        </div>
-        <div class="detail-line">
-          <span class="detail-label">模範訳との違い</span>
-          <p id="aiVsModel" style="margin:0;font-size:14px;"></p>
+          <span class="detail-label">総評</span>
+          <p id="aiComment" style="margin:0;font-size:14px;"></p>
         </div>
         <div class="detail-line" style="margin-bottom:0;">
-          <span class="detail-label">使われた単語</span>
-          <div id="aiWords"></div>
+          <span class="detail-label">直す点</span>
+          <ul class="fix-list" id="fixList"></ul>
         </div>
       </div>
 
@@ -480,7 +515,7 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16c</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16d</p>
   </section>
 </div>
 
@@ -679,6 +714,7 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function switchTab(name) {
+    stopGradeProgressTimer();
     if (name !== "settings") lastMainTab = name;
     state.tab = name;
     Array.prototype.forEach.call(document.querySelectorAll(".view"), function (v) {
@@ -762,15 +798,14 @@ nav.tabbar.is-hidden { display: none; }
     var formsMap = buildFormsMap(passage.wordNos);
     var html = "";
     var last = 0;
+    var i = 0;
     text.replace(TOKEN_RE, function (token, offset) {
       html += escapeHtml(text.slice(last, offset));
       var norm = normalizeToken(token);
       var no = formsMap[norm];
-      if (no) {
-        html += '<span class="en-word" data-no="' + no + '">' + escapeHtml(token) + "</span>";
-      } else {
-        html += escapeHtml(token);
-      }
+      var noAttr = no ? ' data-no="' + no + '"' : "";
+      html += '<span class="en-word" data-i="' + i + '"' + noAttr + '>' + escapeHtml(token) + "</span>";
+      i++;
       last = offset + token.length;
       return token;
     });
@@ -793,19 +828,52 @@ nav.tabbar.is-hidden { display: none; }
     var q = state.quiz.current;
     if (q) speakText(q.en);
   });
-
-  document.getElementById("passageEn").addEventListener("click", function (e) {
-    var span = e.target.closest(".en-word");
-    if (!span) return;
-    var no = parseInt(span.getAttribute("data-no"), 10);
-    var w = wordByNo[no];
-    var box = document.getElementById("wordMeaning");
-    if (!w) { box.innerHTML = ""; return; }
-    box.innerHTML =
-      '<span class="wm-word">' + escapeHtml(w.word) + "</span>" +
-      '<span class="wm-pos">' + escapeHtml(w.pos || "") + "</span>" +
-      '<span class="wm-meaning">' + escapeHtml(w.meaning || "") + "</span>";
+  document.getElementById("resultSpeakBtn").addEventListener("click", function () {
+    var q = state.quiz.current;
+    if (q) speakText(q.en);
   });
+
+  // ---------- Word tap meaning (shared by quiz + result screens) ----------
+  function showWordMeaning(box, info) {
+    if (!info) { box.innerHTML = ""; return; }
+    box.innerHTML =
+      '<span class="wm-word">' + escapeHtml(info.word || "") + "</span>" +
+      (info.pos ? '<span class="wm-pos">' + escapeHtml(info.pos) + "</span>" : "") +
+      '<span class="wm-meaning">' + escapeHtml(info.meaning || "") + "</span>";
+  }
+
+  function wordInfoForSpan(passage, span) {
+    var no = parseInt(span.getAttribute("data-no"), 10);
+    if (no) {
+      var w = wordByNo[no];
+      if (w) return { word: w.word, pos: w.pos, meaning: w.meaning };
+    }
+    var i = parseInt(span.getAttribute("data-i"), 10);
+    if (passage && Array.isArray(passage.glosses) && !isNaN(i) && passage.glosses[i]) {
+      var g = passage.glosses[i];
+      return { word: g.lemma || g.form || "", pos: g.pos || "", meaning: g.meaning || "" };
+    }
+    return null;
+  }
+
+  function wireWordTap(containerEl, boxEl, getPassage) {
+    containerEl.addEventListener("click", function (e) {
+      var span = e.target.closest(".en-word");
+      if (!span) return;
+      var wasOn = span.classList.contains("is-on");
+      var prev = containerEl.querySelector(".en-word.is-on");
+      if (prev) prev.classList.remove("is-on");
+      if (wasOn) {
+        showWordMeaning(boxEl, null);
+        return;
+      }
+      span.classList.add("is-on");
+      showWordMeaning(boxEl, wordInfoForSpan(getPassage(), span));
+    });
+  }
+
+  wireWordTap(document.getElementById("passageEn"), document.getElementById("wordMeaning"), function () { return state.quiz.current; });
+  wireWordTap(document.getElementById("resultPassageEn"), document.getElementById("resultWordMeaning"), function () { return state.quiz.current; });
 
   // ---------- Quiz flow ----------
   function renderRangeChips() {
@@ -896,6 +964,7 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function startQuizPlay(range) {
+    stopGradeProgressTimer();
     var passage = pickNextPassage(range);
     if (!passage) { renderQuizPhase(); return; }
     clearResume();
@@ -919,6 +988,7 @@ nav.tabbar.is-hidden { display: none; }
   });
 
   function resumeQuizPlay() {
+    stopGradeProgressTimer();
     var r = progress.resume;
     if (!r) return;
     var passage = passageById[r.passageId];
@@ -946,6 +1016,7 @@ nav.tabbar.is-hidden { display: none; }
   document.getElementById("resumeQuizBtn").addEventListener("click", resumeQuizPlay);
 
   function startQuizForPassage(passage, range) {
+    stopGradeProgressTimer();
     if (state.quiz.phase === "play") {
       if (!window.confirm("途中のテストがあります。この問題を始めますか？")) return;
     }
@@ -971,6 +1042,7 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function returnToSetupWithResume() {
+    stopGradeProgressTimer();
     var q = state.quiz.current;
     if (q) saveResume(q, state.quiz.range, document.getElementById("passageInput").value);
     state.quiz.current = null;
@@ -1078,12 +1150,9 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function buildGeminiPrompt(passage, answerText) {
-    var vocab = (passage.wordNos || []).map(function (no) {
-      var w = wordByNo[no];
-      return w ? (no + ". " + w.word + "（" + w.meaning + "）") : null;
-    }).filter(Boolean).join("\n");
     return [
-      "あなたは英語学習者の和訳を採点する先生です。次の情報をもとに、学習者の日本語訳を採点してください。",
+      "あなたは英語学習者の和訳を採点する先生です。",
+      "次の英文と模範訳、学習者の訳を比較して、学習者の訳を100点満点で採点してください。",
       "",
       "英文:",
       passage.en,
@@ -1094,13 +1163,14 @@ nav.tabbar.is-hidden { display: none; }
       "学習者の訳:",
       answerText || "（未回答）",
       "",
-      "使用単語（番号・英単語・意味）:",
-      vocab || "（なし）",
-      "",
-      "採点基準: 意味が十分に通じて正確なら「○」（おおむね80点以上）、部分的に不足・不自然なら「△」、大きな誤訳や未訳なら「×」としてください。厳密な文言の一致は求めません。",
+      "採点基準:",
+      "- score は学習者の訳と模範訳を比較した結果を0から100の整数で表してください。意味が十分に通じて正確なほど高得点にしてください。",
+      "- comment には総評を短い日本語で書いてください。",
+      "- fixes は学習者の訳の中で直すべき表現のリストです。各要素の wrong には学習者の訳の中に実際に含まれている文言を、できるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えないでください）。right には正しい表現を、reason には短い理由を入れてください。",
+      "- 直すところが無ければ fixes は空配列にしてください。",
       "",
       "次のJSON形式だけで出力してください。説明文やコードフェンスは付けないでください。",
-      "{\"score\": 0から100の整数, \"grade\": \"○\"または\"△\"または\"×\", \"good\": [\"良い点\"], \"fix\": [\"直す点\"], \"vsModel\": \"模範訳との違いを短く\", \"words\": [{\"no\": 1, \"word\": \"invoice\", \"meaning\": \"請求書\", \"note\": \"短く\"}]}"
+      "{\"score\": 0から100の整数, \"comment\": \"総評（短い日本語）\", \"fixes\": [{\"wrong\": \"学習者の訳の中の間違っている表現\", \"right\": \"正しい表現\", \"reason\": \"短い理由\"}]}"
     ].join("\n");
   }
 
@@ -1140,38 +1210,154 @@ nav.tabbar.is-hidden { display: none; }
 
   function isValidAiResult(r) {
     if (!r || typeof r !== "object") return false;
-    if (typeof r.score !== "number" || isNaN(r.score)) return false;
-    if (["○", "△", "×"].indexOf(r.grade) === -1) return false;
-    if (!Array.isArray(r.good) || !Array.isArray(r.fix)) return false;
-    if (typeof r.vsModel !== "string") return false;
-    if (!Array.isArray(r.words)) return false;
+    if (typeof r.score !== "number" || !isFinite(r.score)) return false;
+    if (typeof r.comment !== "string") return false;
+    if (!Array.isArray(r.fixes)) return false;
     return true;
+  }
+
+  function scoreToGrade(score) {
+    if (score >= 80) return "○";
+    if (score >= 50) return "△";
+    return "×";
+  }
+
+  function normalizeAiResult(r) {
+    var score = Math.round(r.score);
+    if (score < 0) score = 0;
+    if (score > 100) score = 100;
+    var fixes = r.fixes.filter(function (f) { return f && typeof f === "object"; }).map(function (f) {
+      return {
+        wrong: typeof f.wrong === "string" ? f.wrong : "",
+        right: typeof f.right === "string" ? f.right : "",
+        reason: typeof f.reason === "string" ? f.reason : ""
+      };
+    });
+    return { score: score, comment: r.comment, fixes: fixes, grade: scoreToGrade(score) };
   }
 
   function renderAiBox(result) {
     document.getElementById("aiBox").style.display = "";
     document.getElementById("aiScore").textContent = result.score;
     document.getElementById("aiGrade").textContent = result.grade;
-    document.getElementById("aiGood").innerHTML = result.good.map(function (g) { return "<li>" + escapeHtml(g) + "</li>"; }).join("") || "<li>（なし）</li>";
-    document.getElementById("aiFix").innerHTML = result.fix.map(function (g) { return "<li>" + escapeHtml(g) + "</li>"; }).join("") || "<li>（なし）</li>";
-    document.getElementById("aiVsModel").textContent = result.vsModel;
-    document.getElementById("aiWords").innerHTML = result.words.map(function (w) {
-      return '<div class="ai-word-row"><b>' + escapeHtml(w.word || "") + "</b> " + escapeHtml(w.meaning || "") +
-        (w.note ? "（" + escapeHtml(w.note) + "）" : "") + "</div>";
-    }).join("") || "";
+    document.getElementById("aiComment").textContent = result.comment || "";
+    var list = document.getElementById("fixList");
+    if (!result.fixes.length) {
+      list.innerHTML = '<li class="fix-row">直すところはありません</li>';
+    } else {
+      list.innerHTML = result.fixes.map(function (f) {
+        return '<li class="fix-row">' +
+          '<div class="fix-row-main"><span class="fix-wrong">' + escapeHtml(f.wrong) + '</span>' +
+          '<span class="fix-arrow">→</span><span class="fix-right">' + escapeHtml(f.right) + '</span></div>' +
+          (f.reason ? '<div class="fix-row-reason">' + escapeHtml(f.reason) + '</div>' : '') +
+          '</li>';
+      }).join("");
+    }
+  }
+
+  // ---------- Red/green diff highlight on the learner's answer ----------
+  function computeFixRanges(text, fixes) {
+    var ranges = [];
+    for (var i = 0; i < fixes.length; i++) {
+      var wrong = fixes[i].wrong;
+      if (!wrong) return null;
+      var searchFrom = 0;
+      var found = false;
+      while (true) {
+        var idx = text.indexOf(wrong, searchFrom);
+        if (idx === -1) break;
+        var end = idx + wrong.length;
+        var overlaps = ranges.some(function (r) { return idx < r.end && end > r.start; });
+        if (!overlaps) {
+          ranges.push({ start: idx, end: end, right: fixes[i].right });
+          found = true;
+          break;
+        }
+        searchFrom = idx + 1;
+      }
+      if (!found) return null;
+    }
+    ranges.sort(function (a, b) { return a.start - b.start; });
+    return ranges;
+  }
+
+  function renderUserJa(answerText, fixes) {
+    var el = document.getElementById("userJa");
+    var text = answerText || "";
+    var display = text || "（未回答）";
+    if (!text || !fixes || !fixes.length) {
+      el.textContent = display;
+      return;
+    }
+    var ranges = computeFixRanges(text, fixes);
+    if (!ranges) {
+      el.textContent = display;
+      return;
+    }
+    var html = "";
+    var last = 0;
+    ranges.forEach(function (r) {
+      html += escapeHtml(text.slice(last, r.start));
+      html += '<span class="fix-wrong">' + escapeHtml(text.slice(r.start, r.end)) + "</span>";
+      html += '<span class="fix-right">' + escapeHtml(r.right || "") + "</span>";
+      last = r.end;
+    });
+    html += escapeHtml(text.slice(last));
+    el.innerHTML = html;
+  }
+
+  // ---------- Grading progress bar ----------
+  var gradeProgressRaf = null;
+  function setGradeProgressPct(pct) {
+    var clamped = Math.max(0, Math.min(100, Math.round(pct)));
+    document.getElementById("gradeProgressPct").textContent = clamped + "%";
+    document.getElementById("gradeProgressFill").style.width = clamped + "%";
+  }
+  function stopGradeProgressTimer() {
+    if (gradeProgressRaf !== null) {
+      window.cancelAnimationFrame(gradeProgressRaf);
+      gradeProgressRaf = null;
+    }
+  }
+  function startGradeProgress() {
+    stopGradeProgressTimer();
+    setGradeProgressPct(0);
+    var startTime = Date.now();
+    var DURATION_MS = 10000;
+    function tick() {
+      var t = Math.min(1, (Date.now() - startTime) / DURATION_MS);
+      var eased = 1 - Math.pow(1 - t, 2);
+      setGradeProgressPct(eased * 90);
+      gradeProgressRaf = (t < 1) ? window.requestAnimationFrame(tick) : null;
+    }
+    gradeProgressRaf = window.requestAnimationFrame(tick);
+  }
+  function abortGradeProgress() {
+    stopGradeProgressTimer();
+    setGradeProgressPct(0);
+  }
+  function finishGradeProgress(callback) {
+    stopGradeProgressTimer();
+    setGradeProgressPct(100);
+    window.setTimeout(callback, 300);
   }
 
   function runGradingFlow() {
     var q = state.quiz.current;
     var answer = document.getElementById("passageInput").value;
-    document.getElementById("userJa").textContent = answer || "（未回答）";
+    renderUserJa(answer, []);
     document.getElementById("modelJa").textContent = q.ja;
+    document.getElementById("resultPassageId").textContent = q.id;
+    document.getElementById("resultPassageEn").innerHTML = renderPassageHtml(q);
+    document.getElementById("resultWordMeaning").innerHTML = "";
     document.getElementById("aiBox").style.display = "none";
     document.getElementById("selfGrade").style.display = "none";
     document.getElementById("aiNote").style.display = "none";
+    document.getElementById("aiPending").style.display = "none";
     document.getElementById("finishMsg").style.display = "none";
     document.getElementById("nextQuizBtn").style.display = "none";
     document.getElementById("nextQuizBtn").textContent = "次の問題";
+    abortGradeProgress();
 
     var apiKey = geminiKey();
     if (!apiKey) {
@@ -1179,12 +1365,18 @@ nav.tabbar.is-hidden { display: none; }
       return;
     }
     document.getElementById("aiPending").style.display = "";
+    startGradeProgress();
     gradeWithAI(q, answer, apiKey).then(function (result) {
-      document.getElementById("aiPending").style.display = "none";
       if (!isValidAiResult(result)) throw new Error("invalid ai result");
-      renderAiBox(result);
-      finalizeGrading(result.grade, result.score, "ai", result);
+      var norm = normalizeAiResult(result);
+      finishGradeProgress(function () {
+        document.getElementById("aiPending").style.display = "none";
+        renderUserJa(answer, norm.fixes);
+        renderAiBox(norm);
+        finalizeGrading(norm.grade, norm.score, "ai", norm);
+      });
     }).catch(function () {
+      abortGradeProgress();
       document.getElementById("aiPending").style.display = "none";
       document.getElementById("aiNote").style.display = "";
       document.getElementById("aiNote").textContent = "AI採点を利用できませんでした。自己採点してください。";
