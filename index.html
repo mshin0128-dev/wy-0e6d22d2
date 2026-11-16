@@ -559,7 +559,7 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.17b</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.17c</p>
   </section>
 </div>
 
@@ -634,7 +634,7 @@ nav.tabbar.is-hidden { display: none; }
 
   // ---------- Progress storage ----------
   function defaultProgress() {
-    return { cycles: {}, items: {}, sessions: [], resume: null, understood: {}, memos: [] };
+    return { cycles: {}, items: {}, sessions: [], resume: null, understood: {}, memos: [], lapFix_v1: false };
   }
   var progress = defaultProgress();
 
@@ -686,7 +686,8 @@ nav.tabbar.is-hidden { display: none; }
         sessions: (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [],
         resume: isValidResume(parsed && parsed.resume) ? parsed.resume : null,
         understood: (parsed && typeof parsed.understood === "object" && parsed.understood && !Array.isArray(parsed.understood)) ? parsed.understood : {},
-        memos: (parsed && Array.isArray(parsed.memos)) ? parsed.memos.filter(isValidMemo).map(normalizeMemo) : []
+        memos: (parsed && Array.isArray(parsed.memos)) ? parsed.memos.filter(isValidMemo).map(normalizeMemo) : [],
+        lapFix_v1: (parsed && typeof parsed.lapFix_v1 === "boolean") ? parsed.lapFix_v1 : false
       };
     } catch (e) {
       progress = defaultProgress();
@@ -778,6 +779,48 @@ nav.tabbar.is-hidden { display: none; }
 
   function poolForRange(range) {
     return PASSAGES.filter(function (p) { return (p.ranges || []).indexOf(range) !== -1; });
+  }
+
+  function currentPoolIds(range) {
+    return poolForRange(range).map(function (p) { return p.id; });
+  }
+
+  function doneInCurrentPool(c, range) {
+    var idSet = {};
+    currentPoolIds(range).forEach(function (id) { idSet[id] = true; });
+    return c.done.filter(function (id) { return idSet[id]; });
+  }
+
+  function isCycleComplete(c, range) {
+    var ids = currentPoolIds(range);
+    if (!ids.length) return false;
+    return ids.every(function (id) { return c.done.indexOf(id) !== -1; });
+  }
+
+  function runLapFixV1() {
+    if (progress.lapFix_v1) return;
+    Object.keys(progress.cycles).forEach(function (range) {
+      var c = progress.cycles[range];
+      if (!c || typeof c.lap !== "number" || c.lap < 2) return;
+      if (doneInCurrentPool(c, range).length > 0) return;
+      var poolIds = currentPoolIds(range);
+      var poolIdSet = {};
+      poolIds.forEach(function (id) { poolIdSet[id] = true; });
+      var seen = {}, prevDone = [];
+      progress.sessions.forEach(function (s) {
+        if (s.range !== range) return;
+        if (!poolIdSet[s.passageId]) return;
+        if (seen[s.passageId]) return;
+        seen[s.passageId] = true;
+        prevDone.push(s.passageId);
+      });
+      if (prevDone.length > 0 && prevDone.length < poolIds.length) {
+        c.lap = Math.max(1, c.lap - 1);
+        c.done = prevDone;
+      }
+    });
+    progress.lapFix_v1 = true;
+    saveProgress();
   }
 
   function shuffle(arr) {
@@ -1060,7 +1103,7 @@ nav.tabbar.is-hidden { display: none; }
     if (!c.everStarted) {
       el.innerHTML = "今の周回: <span class=\"cv\">0周目</span>（" + pool.length + "問が対象）";
     } else {
-      el.innerHTML = "今の周回: <span class=\"cv\">" + c.lap + "周目</span>（" + pool.length + "問中" + c.done.length + "問やった）";
+      el.innerHTML = "今の周回: <span class=\"cv\">" + c.lap + "周目</span>（" + pool.length + "問中" + doneInCurrentPool(c, range).length + "問やった）";
     }
   }
 
@@ -1289,9 +1332,8 @@ nav.tabbar.is-hidden { display: none; }
     };
     var c = getCycle(range);
     if (c.done.indexOf(passage.id) === -1) c.done.push(passage.id);
-    var pool = poolForRange(range);
     var lapCompleted = null;
-    if (pool.length > 0 && c.done.length >= pool.length) {
+    if (isCycleComplete(c, range)) {
       lapCompleted = buildLapSummary(range, c.done.slice());
       c.lap = (c.lap || 1) + 1;
       c.done = [];
@@ -1885,7 +1927,7 @@ nav.tabbar.is-hidden { display: none; }
         var pool = poolForRange(r);
         var text = !c.everStarted
           ? "今の周回: 0周目（" + pool.length + "問が対象）"
-          : "今の周回: " + c.lap + "周目（" + pool.length + "問中" + c.done.length + "問やった）";
+          : "今の周回: " + c.lap + "周目（" + pool.length + "問中" + doneInCurrentPool(c, r).length + "問やった）";
         return '<div class="cycle-status" style="margin-top:8px;"><b>' + escapeHtml(r) + "</b> ・ " + escapeHtml(text) + "</div>";
       }).join("");
     }
@@ -2185,6 +2227,7 @@ nav.tabbar.is-hidden { display: none; }
   // ---------- Init ----------
   try {
     loadProgress();
+    runLapFixV1();
   } catch (e) {
     progress = defaultProgress();
   }
