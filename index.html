@@ -177,11 +177,21 @@ html[data-theme="dark"] .btn.primary { background: linear-gradient(135deg, #8A5A
   background: var(--card); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; padding: 0;
 }
 .speak-btn svg { width: 17px; height: 17px; flex: none; }
-.word-meaning-box { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--tab-pill-bg); font-size: 14px; min-height: 0; overflow-wrap: anywhere; }
+.word-meaning-box { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--tab-pill-bg); font-size: 14px; min-height: 0; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
 .word-meaning-box:empty { display: none; }
 .word-meaning-box .wm-word { font-weight: 700; margin-right: 6px; }
 .word-meaning-box .wm-pos { font-size: 12px; color: var(--sub); border: 1px solid var(--border); border-radius: 8px; padding: 1px 6px; margin-right: 6px; }
-.word-meaning-box .wm-meaning { color: var(--text); }
+.word-meaning-box .wm-meaning { color: var(--text); flex: 1; min-width: 0; }
+.section-label { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--tab-pill-bg); border-radius: 8px; padding: 2px 8px; margin-bottom: 8px; }
+.memo-btn { flex: none; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--sub); font-weight: 600; }
+.memo-btn.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+ul.vocab-check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+li.vocab-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 12px; padding: 4px 10px; min-width: 0; }
+.vocab-row-label { display: flex; align-items: center; gap: 10px; min-height: 44px; flex: 1; min-width: 0; cursor: pointer; }
+.vocab-row-label input.vocab-check { flex: none; width: 20px; height: 20px; }
+.vocab-row-text { font-size: 14px; overflow-wrap: anywhere; min-width: 0; }
+.vocab-row-text b { color: var(--accent); }
+.pr-vocab { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; min-width: 0; }
 .input-answer {
   display: block; width: 100%; min-height: 110px; font-size: 16px; border: 1px solid var(--border);
   background: var(--card); color: var(--text); border-radius: 12px; padding: 10px 12px; overflow-wrap: anywhere; resize: vertical;
@@ -260,6 +270,7 @@ li.session-item { border: 1px solid var(--border); border-radius: 12px; padding:
 .session-mark.m-close { color: var(--close); }
 .session-mark.m-bad { color: var(--danger); }
 .session-score { color: var(--sub); font-size: 13px; }
+.memo-delete-btn { color: var(--danger); margin-top: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-weight: 600; }
 
 /* ---------- List ---------- */
 ul.passage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -458,6 +469,11 @@ nav.tabbar.is-hidden { display: none; }
         </div>
       </div>
 
+      <div class="card" id="vocabCheckCard" style="display:none; margin-bottom:14px;">
+        <span class="section-label">この文の単語帳の単語</span>
+        <ul class="vocab-check-list" id="vocabCheckList"></ul>
+      </div>
+
       <div class="finish-box" id="finishMsg" style="display:none;"></div>
 
       <div class="btn-row">
@@ -481,6 +497,8 @@ nav.tabbar.is-hidden { display: none; }
     <div class="card" style="margin-bottom:16px;" id="recordSummary"></div>
     <h3 class="sub-title">履歴</h3>
     <div class="card" id="recordList"></div>
+    <h3 class="sub-title">単語メモ</h3>
+    <div class="card" id="wordMemoList"></div>
   </section>
 
   <section class="view active" id="view-list">
@@ -489,6 +507,7 @@ nav.tabbar.is-hidden { display: none; }
     <div class="search-wrap">
       <input type="text" id="listSearch" placeholder="英文・和訳・idで検索" aria-label="検索">
     </div>
+    <div class="card" id="listVocabSummary" style="margin-bottom:12px;"></div>
     <ul class="passage-list" id="passageList"></ul>
   </section>
 
@@ -540,7 +559,7 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16g</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.17a</p>
   </section>
 </div>
 
@@ -594,6 +613,7 @@ nav.tabbar.is-hidden { display: none; }
   PASSAGES.forEach(function (p) { passageById[p.id] = p; });
   var wordByNo = {};
   WORDS.forEach(function (w) { wordByNo[w.no] = w; });
+  var WORDBOOK_TOTAL = 1000;
 
   var RANGES = (function () {
     var seen = {}, out = [];
@@ -614,7 +634,7 @@ nav.tabbar.is-hidden { display: none; }
 
   // ---------- Progress storage ----------
   function defaultProgress() {
-    return { cycles: {}, items: {}, sessions: [], resume: null };
+    return { cycles: {}, items: {}, sessions: [], resume: null, understood: {}, memos: [] };
   }
   var progress = defaultProgress();
 
@@ -631,6 +651,29 @@ nav.tabbar.is-hidden { display: none; }
     return true;
   }
 
+  function isValidMemo(m) {
+    if (!m || typeof m !== "object") return false;
+    if (typeof m.id !== "string" || !m.id) return false;
+    if (typeof m.key !== "string" || !m.key) return false;
+    if (typeof m.word !== "string") return false;
+    if (typeof m.meaning !== "string") return false;
+    if (typeof m.at !== "string") return false;
+    return true;
+  }
+
+  function normalizeMemo(m) {
+    return {
+      id: m.id,
+      key: m.key,
+      word: m.word,
+      meaning: m.meaning,
+      pos: typeof m.pos === "string" ? m.pos : "",
+      no: (typeof m.no === "number" && isFinite(m.no)) ? m.no : null,
+      passageId: typeof m.passageId === "string" ? m.passageId : "",
+      at: m.at
+    };
+  }
+
   function loadProgress() {
     var raw = null;
     try { raw = localStorage.getItem(PROGRESS_KEY); } catch (e) { raw = null; }
@@ -641,11 +684,77 @@ nav.tabbar.is-hidden { display: none; }
         cycles: (parsed && typeof parsed.cycles === "object" && parsed.cycles) ? parsed.cycles : {},
         items: (parsed && typeof parsed.items === "object" && parsed.items) ? parsed.items : {},
         sessions: (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [],
-        resume: isValidResume(parsed && parsed.resume) ? parsed.resume : null
+        resume: isValidResume(parsed && parsed.resume) ? parsed.resume : null,
+        understood: (parsed && typeof parsed.understood === "object" && parsed.understood && !Array.isArray(parsed.understood)) ? parsed.understood : {},
+        memos: (parsed && Array.isArray(parsed.memos)) ? parsed.memos.filter(isValidMemo).map(normalizeMemo) : []
       };
     } catch (e) {
       progress = defaultProgress();
     }
+  }
+
+  // ---------- Vocab understood / memo helpers ----------
+  function isUnderstood(no) { return !!progress.understood[String(no)]; }
+  function setUnderstood(no, on) {
+    var key = String(no);
+    if (on) progress.understood[key] = true;
+    else delete progress.understood[key];
+    saveProgress();
+  }
+  function toggleUnderstood(no) { setUnderstood(no, !isUnderstood(no)); }
+
+  function uniqueWordbookNos(passage) {
+    var seen = {}, out = [];
+    (passage && passage.wordNos || []).forEach(function (no) {
+      if (seen[no] || !wordByNo[no]) return;
+      seen[no] = true;
+      out.push(no);
+    });
+    out.sort(function (a, b) { return a - b; });
+    return out;
+  }
+
+  function usedWordNos() {
+    var seen = {}, out = [];
+    PASSAGES.forEach(function (p) {
+      (p.wordNos || []).forEach(function (no) {
+        if (seen[no] || !wordByNo[no]) return;
+        seen[no] = true;
+        out.push(no);
+      });
+    });
+    return out;
+  }
+
+  function findMemoIndex(key) {
+    for (var i = 0; i < progress.memos.length; i++) {
+      if (progress.memos[i].key === key) return i;
+    }
+    return -1;
+  }
+  function isMemoed(key) { return findMemoIndex(key) !== -1; }
+  function toggleMemo(key, data) {
+    var idx = findMemoIndex(key);
+    if (idx !== -1) {
+      progress.memos.splice(idx, 1);
+    } else {
+      progress.memos.push({
+        id: "m-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8),
+        key: key,
+        word: (data && data.word) || "",
+        meaning: (data && data.meaning) || "",
+        pos: (data && data.pos) || "",
+        no: (data && typeof data.no === "number") ? data.no : null,
+        passageId: (data && data.passageId) || "",
+        at: new Date().toISOString()
+      });
+    }
+    saveProgress();
+    return isMemoed(key);
+  }
+  function memoKeyForInfo(info, passageId) {
+    if (info.no) return "no:" + info.no;
+    return "p:" + (passageId || "") + ":" + (info.word || "") + ":" + (info.meaning || "");
   }
 
   function saveResume(passage, range, answer) {
@@ -860,29 +969,35 @@ nav.tabbar.is-hidden { display: none; }
   });
 
   // ---------- Word tap meaning (shared by quiz + result screens) ----------
-  function showWordMeaning(box, info) {
+  function showWordMeaning(box, info, opts) {
     if (!info) { box.innerHTML = ""; return; }
-    box.innerHTML =
+    var html =
       '<span class="wm-word">' + escapeHtml(info.word || "") + "</span>" +
       (info.pos ? '<span class="wm-pos">' + escapeHtml(info.pos) + "</span>" : "") +
       '<span class="wm-meaning">' + escapeHtml(info.meaning || "") + "</span>";
+    if (opts && opts.showMemo) {
+      var key = memoKeyForInfo(info, opts.passageId);
+      var memoed = isMemoed(key);
+      html += '<button type="button" class="memo-btn' + (memoed ? " is-on" : "") + '" data-memo-key="' + escapeHtml(key) + '" aria-pressed="' + (memoed ? "true" : "false") + '">メモ</button>';
+    }
+    box.innerHTML = html;
   }
 
   function wordInfoForSpan(passage, span) {
     var no = parseInt(span.getAttribute("data-no"), 10);
     if (no) {
       var w = wordByNo[no];
-      if (w) return { word: w.word, pos: w.pos, meaning: w.meaning };
+      if (w) return { word: w.word, pos: w.pos, meaning: w.meaning, no: no };
     }
     var i = parseInt(span.getAttribute("data-i"), 10);
     if (passage && Array.isArray(passage.glosses) && !isNaN(i) && passage.glosses[i]) {
       var g = passage.glosses[i];
-      return { word: g.lemma || g.form || "", pos: g.pos || "", meaning: g.meaning || "" };
+      return { word: g.lemma || g.form || "", pos: g.pos || "", meaning: g.meaning || "", no: null };
     }
     return null;
   }
 
-  function wireWordTap(containerEl, boxEl, getPassage) {
+  function wireWordTap(containerEl, boxEl, getPassage, opts) {
     containerEl.addEventListener("click", function (e) {
       var span = e.target.closest(".en-word");
       if (!span) return;
@@ -894,12 +1009,28 @@ nav.tabbar.is-hidden { display: none; }
         return;
       }
       span.classList.add("is-on");
-      showWordMeaning(boxEl, wordInfoForSpan(getPassage(), span));
+      var passage = getPassage();
+      var info = wordInfoForSpan(passage, span);
+      showWordMeaning(boxEl, info, (opts && opts.showMemo) ? { showMemo: true, passageId: passage ? passage.id : "" } : null);
     });
+    if (opts && opts.showMemo) {
+      boxEl.addEventListener("click", function (e) {
+        var btn = e.target.closest(".memo-btn");
+        if (!btn) return;
+        var span = containerEl.querySelector(".en-word.is-on");
+        var passage = getPassage();
+        var info = span ? wordInfoForSpan(passage, span) : null;
+        if (!info) return;
+        var key = btn.getAttribute("data-memo-key");
+        var on = toggleMemo(key, { word: info.word, meaning: info.meaning, pos: info.pos, no: info.no, passageId: passage ? passage.id : "" });
+        btn.classList.toggle("is-on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
   }
 
   wireWordTap(document.getElementById("passageEn"), document.getElementById("wordMeaning"), function () { return state.quiz.current; });
-  wireWordTap(document.getElementById("resultPassageEn"), document.getElementById("resultWordMeaning"), function () { return state.quiz.current; });
+  wireWordTap(document.getElementById("resultPassageEn"), document.getElementById("resultWordMeaning"), function () { return state.quiz.current; }, { showMemo: true });
 
   // ---------- Quiz flow ----------
   function renderRangeChips() {
@@ -952,7 +1083,57 @@ nav.tabbar.is-hidden { display: none; }
     document.getElementById("quizSetup").style.display = name === "setup" ? "" : "none";
     document.getElementById("quizPlay").style.display = name === "play" ? "" : "none";
     document.getElementById("quizResult").style.display = name === "result" ? "" : "none";
+    if (name !== "result") document.getElementById("vocabCheckCard").style.display = "none";
   }
+
+  // ---------- Vocab check list (quiz result screen) ----------
+  function renderVocabCheckList(passage) {
+    var list = document.getElementById("vocabCheckList");
+    var nos = uniqueWordbookNos(passage);
+    list.innerHTML = nos.map(function (no) {
+      var w = wordByNo[no];
+      var memoKey = "no:" + no;
+      var memoed = isMemoed(memoKey);
+      return '<li class="vocab-row" data-no="' + no + '">' +
+        '<label class="vocab-row-label">' +
+        '<input type="checkbox" class="vocab-check" data-no="' + no + '"' + (isUnderstood(no) ? " checked" : "") + '>' +
+        '<span class="vocab-row-text">No.' + no + ' <b>' + escapeHtml(w.word) + '</b> ' + escapeHtml(w.meaning) + '</span>' +
+        '</label>' +
+        '<button type="button" class="memo-btn' + (memoed ? " is-on" : "") + '" data-memo-no="' + no + '" aria-pressed="' + (memoed ? "true" : "false") + '">メモ</button>' +
+        '</li>';
+    }).join("");
+  }
+
+  function renderVocabCheckCard(passage) {
+    var card = document.getElementById("vocabCheckCard");
+    var nos = uniqueWordbookNos(passage);
+    if (!nos.length) {
+      card.style.display = "none";
+      document.getElementById("vocabCheckList").innerHTML = "";
+      return;
+    }
+    card.style.display = "";
+    renderVocabCheckList(passage);
+  }
+
+  document.getElementById("vocabCheckList").addEventListener("change", function (e) {
+    var cb = e.target.closest(".vocab-check");
+    if (!cb) return;
+    var no = parseInt(cb.getAttribute("data-no"), 10);
+    setUnderstood(no, cb.checked);
+  });
+
+  document.getElementById("vocabCheckList").addEventListener("click", function (e) {
+    var btn = e.target.closest(".memo-btn");
+    if (!btn) return;
+    var no = parseInt(btn.getAttribute("data-memo-no"), 10);
+    var w = wordByNo[no];
+    if (!w) return;
+    var q = state.quiz.current;
+    var on = toggleMemo("no:" + no, { word: w.word, meaning: w.meaning, pos: w.pos, no: no, passageId: q ? q.id : "" });
+    btn.classList.toggle("is-on", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
 
   function renderResumeUI() {
     var btn = document.getElementById("resumeQuizBtn");
@@ -1182,6 +1363,12 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function buildGradePrompt(passage, answerText) {
+    var vocabNos = uniqueWordbookNos(passage);
+    var vocabLines = vocabNos.map(function (no) {
+      var w = wordByNo[no];
+      return "- No." + no + " " + w.word + "（" + w.meaning + "）";
+    });
+    var vocabText = vocabLines.length ? vocabLines.join("\n") : "（なし）";
     return [
       "あなたは英語学習者の和訳を採点する、やさしい先生です。",
       "次の英文と模範訳、学習者の訳を比較して、学習者の訳を100点満点で採点してください。",
@@ -1195,6 +1382,9 @@ nav.tabbar.is-hidden { display: none; }
       "学習者の訳:",
       answerText || "（未回答）",
       "",
+      "この文の単語帳の単語:",
+      vocabText,
+      "",
       "採点基準:",
       "- 意味が正しく伝わっていれば高得点にしてください。",
       "- 言い回しの違い、自然な意訳、語順の違いは、意味が同じであれば減点しないか、減点してもごく小さくしてください。模範訳とまったく同じ言葉を使っていなくても、意味が同じなら正解として扱ってください。",
@@ -1205,9 +1395,12 @@ nav.tabbar.is-hidden { display: none; }
       "- fixes[].wrong には学習者の訳の中に実際に含まれている文言を、できるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えないでください）。right には模範訳の中の対応する表現を、模範訳の文言からそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えたり自分で新しい言い回しを作ったりしないでください）。reason には短い理由を入れてください。",
       "- comment には総評を短い日本語で書いてください。",
       "- 直すところが無ければ fixes は空配列にしてください。",
+      "- JSON に understood を付けてください。学習者の和訳で、その語の意味が正しく訳せている単語帳番号（上の「この文の単語帳の単語」一覧にある番号だけ）の配列にしてください。",
+      "- 正しく訳せていない語、訳し落とした語は understood に入れないでください。",
+      "- 一覧に無い番号は入れないでください。該当が無ければ空配列にしてください。",
       "",
       "次のJSON形式だけで出力してください。説明文やコードフェンスは付けないでください。",
-      "{\"score\": 0から100の整数, \"comment\": \"総評（短い日本語）\", \"fixes\": [{\"wrong\": \"学習者の訳の中の間違っている表現\", \"right\": \"模範訳から抜き出した正しい表現\", \"reason\": \"短い理由\", \"level\": \"wrong または minor\"}]}"
+      "{\"score\": 0から100の整数, \"comment\": \"総評（短い日本語）\", \"fixes\": [{\"wrong\": \"学習者の訳の中の間違っている表現\", \"right\": \"模範訳から抜き出した正しい表現\", \"reason\": \"短い理由\", \"level\": \"wrong または minor\"}], \"understood\": [単語帳番号の配列]}"
     ].join("\n");
   }
 
@@ -1298,7 +1491,7 @@ nav.tabbar.is-hidden { display: none; }
     return "×";
   }
 
-  function normalizeAiResult(r) {
+  function normalizeAiResult(r, passage) {
     var score = Math.round(r.score);
     if (score < 0) score = 0;
     if (score > 100) score = 100;
@@ -1310,7 +1503,19 @@ nav.tabbar.is-hidden { display: none; }
         level: f.level === "minor" ? "minor" : "wrong"
       };
     });
-    return { score: score, comment: r.comment, fixes: fixes, grade: scoreToGrade(score) };
+    var hasUnderstood = Array.isArray(r.understood);
+    var understood = [];
+    if (hasUnderstood) {
+      var validNos = uniqueWordbookNos(passage);
+      var seen = {};
+      r.understood.forEach(function (v) {
+        var n = parseInt(v, 10);
+        if (isNaN(n) || validNos.indexOf(n) === -1 || seen[n]) return;
+        seen[n] = true;
+        understood.push(n);
+      });
+    }
+    return { score: score, comment: r.comment, fixes: fixes, grade: scoreToGrade(score), hasUnderstood: hasUnderstood, understood: understood };
   }
 
   function renderAiBox(result) {
@@ -1520,6 +1725,7 @@ nav.tabbar.is-hidden { display: none; }
     document.getElementById("nextQuizBtn").style.display = "none";
     document.getElementById("nextQuizBtn").textContent = "次の問題";
     abortGradeProgress();
+    renderVocabCheckCard(q);
 
     var openaiApiKey = openaiKey();
     var geminiApiKey = geminiKey();
@@ -1536,13 +1742,19 @@ nav.tabbar.is-hidden { display: none; }
     startGradeProgress();
     gradePromise.then(function (result) {
       if (!isValidAiResult(result)) throw new Error("invalid ai result");
-      var norm = normalizeAiResult(result);
+      var norm = normalizeAiResult(result, q);
       finishGradeProgress(function () {
         document.getElementById("aiPending").style.display = "none";
         renderUserJa(answer, norm.fixes);
         renderModelJa(q.ja, norm.fixes);
         renderAiBox(norm);
         setFixLegendVisible(norm.fixes.length > 0);
+        if (norm.hasUnderstood) {
+          uniqueWordbookNos(q).forEach(function (no) {
+            setUnderstood(no, norm.understood.indexOf(no) !== -1);
+          });
+          renderVocabCheckList(q);
+        }
         finalizeGrading(norm.grade, norm.score, "ai", norm);
       });
     }).catch(function (e) {
@@ -1709,10 +1921,48 @@ nav.tabbar.is-hidden { display: none; }
     wrap.appendChild(ul);
   }
 
+  function renderWordMemoList() {
+    var wrap = document.getElementById("wordMemoList");
+    var memos = progress.memos.slice().sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
+    if (!memos.length) {
+      wrap.innerHTML = '<p class="empty-msg">まだメモがありません</p>';
+      return;
+    }
+    var ul = document.createElement("ul");
+    ul.className = "session-list";
+    memos.forEach(function (m) {
+      var li = document.createElement("li");
+      li.className = "session-item";
+      var d = new Date(m.at);
+      var dateLabel = isNaN(d.getTime()) ? "日付不明" : (tokyoDateKeyFromDate(d) || "日付不明");
+      li.innerHTML =
+        '<div class="session-date">' + escapeHtml(dateLabel) + "</div>" +
+        '<div class="session-main">' +
+        '<span class="session-label">' + escapeHtml(m.word) + (m.pos ? "（" + escapeHtml(m.pos) + "）" : "") + " ・ " + escapeHtml(m.meaning) + "</span>" +
+        "</div>" +
+        '<div class="session-score">' + escapeHtml(m.passageId || "") + "</div>" +
+        '<button type="button" class="memo-delete-btn" data-memo-id="' + escapeHtml(m.id) + '">削除</button>';
+      ul.appendChild(li);
+    });
+    wrap.innerHTML = "";
+    wrap.appendChild(ul);
+  }
+
+  document.getElementById("wordMemoList").addEventListener("click", function (e) {
+    var btn = e.target.closest(".memo-delete-btn");
+    if (!btn) return;
+    if (!window.confirm("このメモを削除しますか？")) return;
+    var id = btn.getAttribute("data-memo-id");
+    progress.memos = progress.memos.filter(function (m) { return m.id !== id; });
+    saveProgress();
+    renderWordMemoList();
+  });
+
   function renderRecord() {
     renderCalendar();
     renderRecordSummary();
     renderRecordList();
+    renderWordMemoList();
   }
 
   // ---------- List tab ----------
@@ -1742,8 +1992,27 @@ nav.tabbar.is-hidden { display: none; }
     return "直前: " + it.lastGrade + scoreText + " ・ " + it.count + "回";
   }
 
+  function passageVocabCounts(p) {
+    var nos = uniqueWordbookNos(p);
+    var understood = nos.filter(function (no) { return isUnderstood(no); }).length;
+    return { total: nos.length, understood: understood };
+  }
+
+  function renderListVocabSummary() {
+    var wrap = document.getElementById("listVocabSummary");
+    var used = usedWordNos();
+    var usedCount = used.length;
+    var understoodCount = used.filter(function (no) { return isUnderstood(no); }).length;
+    wrap.innerHTML =
+      '<div class="record-summary-row">' +
+      '<div class="rs-item"><div class="rs-num">' + usedCount + '/' + WORDBOOK_TOTAL + '語</div><div class="rs-lbl">単語帳の使用</div></div>' +
+      '<div class="rs-item"><div class="rs-num">' + understoodCount + '/' + usedCount + '語</div><div class="rs-lbl">理解</div></div>' +
+      '</div>';
+  }
+
   function renderList() {
     renderListChips();
+    renderListVocabSummary();
     var ul = document.getElementById("passageList");
     if (!DATA_OK) {
       ul.innerHTML = '<li class="empty-msg">問題データを読み込めません</li>';
@@ -1769,10 +2038,15 @@ nav.tabbar.is-hidden { display: none; }
       li.className = "passage-row";
       li.setAttribute("role", "button");
       li.setAttribute("tabindex", "0");
+      var vc = passageVocabCounts(p);
+      var vocabHtml = vc.total > 0
+        ? '<div class="pr-vocab"><span>単語帳 ' + vc.total + '語</span><span>理解 ' + vc.understood + '/' + vc.total + '</span></div>'
+        : '';
       li.innerHTML =
         '<div class="pr-head"><span class="pr-id">' + escapeHtml(p.id) + "</span>" +
         '<span class="pr-status">' + escapeHtml(passageStatusText(p)) + "</span></div>" +
         '<div class="pr-en">' + escapeHtml(p.en) + "</div>" +
+        vocabHtml +
         '<div class="pr-hint">この問題をやる</div>';
       var go = function () {
         var range = (state.list.range !== "ALL") ? state.list.range : ((p.ranges && p.ranges[0]) || RANGES[0]);
