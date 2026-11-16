@@ -527,7 +527,7 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16e</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16f</p>
   </section>
 </div>
 
@@ -1179,7 +1179,7 @@ nav.tabbar.is-hidden { display: none; }
       "採点基準:",
       "- score は学習者の訳と模範訳を比較した結果を0から100の整数で表してください。意味が十分に通じて正確なほど高得点にしてください。",
       "- comment には総評を短い日本語で書いてください。",
-      "- fixes は学習者の訳の中で直すべき表現のリストです。各要素の wrong には学習者の訳の中に実際に含まれている文言を、できるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えないでください）。right には正しい表現を、reason には短い理由を入れてください。",
+      "- fixes は学習者の訳の中で直すべき表現のリストです。各要素の wrong には学習者の訳の中に実際に含まれている文言を、できるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えないでください）。right には模範訳の中の対応する正しい表現を、模範訳の文言からできるだけそのまま抜き出して入れてください（ハイライト表示に使うため、言い換えたり自分で新しい言い回しを作ったりしないでください）。reason には短い理由を入れてください。",
       "- 直すところが無ければ fixes は空配列にしてください。",
       "",
       "次のJSON形式だけで出力してください。説明文やコードフェンスは付けないでください。",
@@ -1351,7 +1351,87 @@ nav.tabbar.is-hidden { display: none; }
     ranges.forEach(function (r) {
       html += escapeHtml(text.slice(last, r.start));
       html += '<span class="fix-wrong">' + escapeHtml(text.slice(r.start, r.end)) + "</span>";
-      html += '<span class="fix-right">' + escapeHtml(r.right || "") + "</span>";
+      last = r.end;
+    });
+    html += escapeHtml(text.slice(last));
+    el.innerHTML = html;
+  }
+
+  // ---------- Green highlight on the model answer ----------
+  function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
+  }
+
+  var IGNORABLE_CHARS = "、。，．,.!！?？・…ー―-‐–—「」『』（）()[]【】:：;；\"'‘’“”〜～";
+  var IGNORABLE_RE = new RegExp("[\\s　" + escapeRegExp(IGNORABLE_CHARS) + "]");
+
+  function stripIgnorable(s) {
+    var mapping = [];
+    var filtered = "";
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (IGNORABLE_RE.test(ch)) continue;
+      filtered += ch;
+      mapping.push(i);
+    }
+    return { filtered: filtered, mapping: mapping };
+  }
+
+  function rangeOverlaps(start, end, usedRanges) {
+    return usedRanges.some(function (r) { return start < r.end && end > r.start; });
+  }
+
+  function findExactNonOverlapping(text, needle, usedRanges) {
+    var searchFrom = 0;
+    while (true) {
+      var idx = text.indexOf(needle, searchFrom);
+      if (idx === -1) return null;
+      var end = idx + needle.length;
+      if (!rangeOverlaps(idx, end, usedRanges)) return { start: idx, end: end };
+      searchFrom = idx + 1;
+    }
+  }
+
+  function findFuzzyNonOverlapping(text, needle, usedRanges) {
+    var strippedText = stripIgnorable(text);
+    var strippedNeedle = stripIgnorable(needle).filtered;
+    if (!strippedNeedle) return null;
+    var searchFrom = 0;
+    while (true) {
+      var idx = strippedText.filtered.indexOf(strippedNeedle, searchFrom);
+      if (idx === -1) return null;
+      var startOrig = strippedText.mapping[idx];
+      var endOrig = strippedText.mapping[idx + strippedNeedle.length - 1] + 1;
+      if (!rangeOverlaps(startOrig, endOrig, usedRanges)) return { start: startOrig, end: endOrig };
+      searchFrom = idx + 1;
+    }
+  }
+
+  function renderModelJa(jaText, fixes) {
+    var el = document.getElementById("modelJa");
+    var text = jaText || "";
+    if (!text || !fixes || !fixes.length) {
+      el.textContent = text;
+      return;
+    }
+    var ranges = [];
+    fixes.forEach(function (f) {
+      var right = f && typeof f.right === "string" ? f.right : "";
+      if (!right) return;
+      var r = findExactNonOverlapping(text, right, ranges);
+      if (!r) r = findFuzzyNonOverlapping(text, right, ranges);
+      if (r) ranges.push(r);
+    });
+    if (!ranges.length) {
+      el.textContent = text;
+      return;
+    }
+    ranges.sort(function (a, b) { return a.start - b.start; });
+    var html = "";
+    var last = 0;
+    ranges.forEach(function (r) {
+      html += escapeHtml(text.slice(last, r.start));
+      html += '<span class="fix-right">' + escapeHtml(text.slice(r.start, r.end)) + "</span>";
       last = r.end;
     });
     html += escapeHtml(text.slice(last));
@@ -1430,6 +1510,7 @@ nav.tabbar.is-hidden { display: none; }
       finishGradeProgress(function () {
         document.getElementById("aiPending").style.display = "none";
         renderUserJa(answer, norm.fixes);
+        renderModelJa(q.ja, norm.fixes);
         renderAiBox(norm);
         finalizeGrading(norm.grade, norm.score, "ai", norm);
       });
