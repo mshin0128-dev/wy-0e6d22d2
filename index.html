@@ -234,7 +234,7 @@ li.session-item { border: 1px solid var(--border); border-radius: 12px; padding:
 
 /* ---------- List ---------- */
 ul.passage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-li.passage-row { border: 1px solid var(--border); border-radius: 16px; background: var(--card); padding: 12px 14px; min-width: 0; }
+li.passage-row { border: 1px solid var(--border); border-radius: 16px; background: var(--card); padding: 12px 14px; min-width: 0; cursor: pointer; }
 .pr-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .pr-id { font-size: 12px; color: var(--sub); flex: none; }
 .pr-status { font-size: 12px; color: var(--sub); overflow-wrap: anywhere; text-align: right; }
@@ -242,6 +242,7 @@ li.passage-row { border: 1px solid var(--border); border-radius: 16px; backgroun
   font-size: 14px; color: var(--text); overflow: hidden; display: -webkit-box;
   -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere;
 }
+.pr-hint { margin-top: 6px; font-size: 12px; color: var(--accent); font-weight: 600; }
 
 /* ---------- Settings ---------- */
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -315,8 +316,8 @@ nav.tabbar.is-hidden { display: none; }
     </div>
   </header>
 
-  <section class="view active" id="view-quiz">
-    <h2 class="view-title">問題</h2>
+  <section class="view" id="view-quiz">
+    <h2 class="view-title">テスト</h2>
 
     <div id="quizSetup">
       <div class="field">
@@ -327,6 +328,8 @@ nav.tabbar.is-hidden { display: none; }
         <div class="cycle-status" id="cycleStatus"></div>
       </div>
       <button class="btn primary block" id="startQuizBtn">始める</button>
+      <button type="button" class="btn block" id="resumeQuizBtn" style="display:none;margin-top:10px;">続きからやる</button>
+      <p class="st-desc" id="resumeNote" style="display:none;margin:8px 0 0;text-align:center;"></p>
       <p class="empty-msg" id="quizSetupMsg" style="display:none;"></p>
     </div>
 
@@ -432,7 +435,7 @@ nav.tabbar.is-hidden { display: none; }
     <div class="card" id="recordList"></div>
   </section>
 
-  <section class="view" id="view-list">
+  <section class="view active" id="view-list">
     <h2 class="view-title">一覧</h2>
     <div class="chip-row" id="listRangeChips"></div>
     <div class="search-wrap">
@@ -477,29 +480,12 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16b</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16c</p>
   </section>
 </div>
 
 <nav class="tabbar" id="tabbar">
-  <button class="tab-btn active" data-tab="quiz" aria-label="問題">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="5" y="3.5" width="14" height="17" rx="2.2"></rect>
-      <path d="M9 3.5h6v2.2H9z"></path>
-      <path d="M8.5 12.5l2.2 2.2L15.5 10"></path>
-    </svg>
-    <span>問題</span>
-  </button>
-  <button class="tab-btn" data-tab="record" aria-label="記録">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="5" y1="20" x2="5" y2="13"></line>
-      <line x1="10.3" y1="20" x2="10.3" y2="8"></line>
-      <line x1="15.6" y1="20" x2="15.6" y2="11"></line>
-      <line x1="20" y1="20" x2="20" y2="4.5"></line>
-    </svg>
-    <span>記録</span>
-  </button>
-  <button class="tab-btn" data-tab="list" aria-label="一覧">
+  <button class="tab-btn active" data-tab="list" aria-label="一覧">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
       <line x1="9" y1="6" x2="20" y2="6"></line>
       <line x1="9" y1="12" x2="20" y2="12"></line>
@@ -509,6 +495,23 @@ nav.tabbar.is-hidden { display: none; }
       <circle cx="4.5" cy="18" r="1.4"></circle>
     </svg>
     <span>一覧</span>
+  </button>
+  <button class="tab-btn" data-tab="quiz" aria-label="テスト">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="3.5" width="14" height="17" rx="2.2"></rect>
+      <path d="M9 3.5h6v2.2H9z"></path>
+      <path d="M8.5 12.5l2.2 2.2L15.5 10"></path>
+    </svg>
+    <span>テスト</span>
+  </button>
+  <button class="tab-btn" data-tab="record" aria-label="記録">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="5" y1="20" x2="5" y2="13"></line>
+      <line x1="10.3" y1="20" x2="10.3" y2="8"></line>
+      <line x1="15.6" y1="20" x2="15.6" y2="11"></line>
+      <line x1="20" y1="20" x2="20" y2="4.5"></line>
+    </svg>
+    <span>記録</span>
   </button>
 </nav>
 
@@ -550,12 +553,21 @@ nav.tabbar.is-hidden { display: none; }
 
   // ---------- Progress storage ----------
   function defaultProgress() {
-    return { cycles: {}, items: {}, sessions: [] };
+    return { cycles: {}, items: {}, sessions: [], resume: null };
   }
   var progress = defaultProgress();
 
   function saveProgress() {
     try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); } catch (e) {}
+  }
+
+  function isValidResume(r) {
+    if (!r || typeof r !== "object") return false;
+    if (typeof r.passageId !== "string" || !passageById[r.passageId]) return false;
+    if (typeof r.range !== "string" || !r.range) return false;
+    if (typeof r.answer !== "string") return false;
+    if (typeof r.at !== "string") return false;
+    return true;
   }
 
   function loadProgress() {
@@ -567,11 +579,22 @@ nav.tabbar.is-hidden { display: none; }
       progress = {
         cycles: (parsed && typeof parsed.cycles === "object" && parsed.cycles) ? parsed.cycles : {},
         items: (parsed && typeof parsed.items === "object" && parsed.items) ? parsed.items : {},
-        sessions: (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : []
+        sessions: (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [],
+        resume: isValidResume(parsed && parsed.resume) ? parsed.resume : null
       };
     } catch (e) {
       progress = defaultProgress();
     }
+  }
+
+  function saveResume(passage, range, answer) {
+    progress.resume = { passageId: passage.id, range: range, answer: answer || "", at: new Date().toISOString() };
+    saveProgress();
+  }
+
+  function clearResume() {
+    progress.resume = null;
+    saveProgress();
   }
 
   function getCycle(range) {
@@ -643,12 +666,12 @@ nav.tabbar.is-hidden { display: none; }
 
   // ---------- Tabs ----------
   var state = {
-    tab: "quiz",
+    tab: "list",
     quiz: { range: RANGES[0] || null, phase: "setup", current: null, aiResult: null, graded: false, finishSummary: null },
     list: { range: "ALL", query: "" },
     record: { calendar: null }
   };
-  var lastMainTab = "quiz";
+  var lastMainTab = "list";
 
   function updateSettingsBtnState(name) {
     var btn = document.getElementById("settingsBtn");
@@ -678,13 +701,13 @@ nav.tabbar.is-hidden { display: none; }
   });
 
   function openSettings() {
-    if (state.tab === "quiz" && state.quiz.phase === "play") {
-      if (!window.confirm("問題の途中です。設定を開くと中断します。中断しますか？")) return;
-      discardCurrentQuestion();
+    if (state.quiz.phase === "play") {
+      if (!window.confirm("テストの途中です。設定を開くと中断します（続きから再開できます）。中断しますか？")) return;
+      returnToSetupWithResume();
     }
     switchTab("settings");
   }
-  function closeSettings() { switchTab(lastMainTab || "quiz"); }
+  function closeSettings() { switchTab(lastMainTab || "list"); }
   document.getElementById("settingsBtn").addEventListener("click", function () {
     if (state.tab === "settings") closeSettings(); else openSettings();
   });
@@ -837,6 +860,21 @@ nav.tabbar.is-hidden { display: none; }
     document.getElementById("quizResult").style.display = name === "result" ? "" : "none";
   }
 
+  function renderResumeUI() {
+    var btn = document.getElementById("resumeQuizBtn");
+    var note = document.getElementById("resumeNote");
+    var r = progress.resume;
+    if (r && passageById[r.passageId]) {
+      btn.style.display = "";
+      note.style.display = "";
+      note.textContent = "前回の途中（" + r.passageId + "・" + r.range + "）があります";
+    } else {
+      btn.style.display = "none";
+      note.style.display = "none";
+      note.textContent = "";
+    }
+  }
+
   function renderQuizPhase() {
     if (!DATA_OK) {
       document.getElementById("quizSetupMsg").style.display = "";
@@ -848,6 +886,7 @@ nav.tabbar.is-hidden { display: none; }
     if (state.quiz.phase === "setup") {
       renderRangeChips();
       renderCycleStatus();
+      renderResumeUI();
       showQuizSub("setup");
     } else if (state.quiz.phase === "play") {
       showQuizSub("play");
@@ -859,6 +898,7 @@ nav.tabbar.is-hidden { display: none; }
   function startQuizPlay(range) {
     var passage = pickNextPassage(range);
     if (!passage) { renderQuizPhase(); return; }
+    clearResume();
     state.quiz.current = passage;
     state.quiz.range = range;
     state.quiz.aiResult = null;
@@ -870,6 +910,7 @@ nav.tabbar.is-hidden { display: none; }
     document.getElementById("passageInput").value = "";
     state.quiz.phase = "play";
     showQuizSub("play");
+    saveResume(passage, range, "");
   }
 
   document.getElementById("startQuizBtn").addEventListener("click", function () {
@@ -877,13 +918,67 @@ nav.tabbar.is-hidden { display: none; }
     startQuizPlay(state.quiz.range);
   });
 
-  function discardCurrentQuestion() {
+  function resumeQuizPlay() {
+    var r = progress.resume;
+    if (!r) return;
+    var passage = passageById[r.passageId];
+    if (!passage) { clearResume(); renderQuizPhase(); return; }
+    var range = r.range;
+    var c = getCycle(range);
+    if (!c.everStarted) {
+      c.everStarted = true;
+      if (!c.lap) c.lap = 1;
+      saveProgress();
+    }
+    state.quiz.range = range;
+    state.quiz.current = passage;
+    state.quiz.aiResult = null;
+    state.quiz.graded = false;
+    state.quiz.finishSummary = null;
+    document.getElementById("passageId").textContent = passage.id;
+    document.getElementById("passageEn").innerHTML = renderPassageHtml(passage);
+    document.getElementById("wordMeaning").innerHTML = "";
+    document.getElementById("passageInput").value = r.answer || "";
+    state.quiz.phase = "play";
+    showQuizSub("play");
+  }
+
+  document.getElementById("resumeQuizBtn").addEventListener("click", resumeQuizPlay);
+
+  function startQuizForPassage(passage, range) {
+    if (state.quiz.phase === "play") {
+      if (!window.confirm("途中のテストがあります。この問題を始めますか？")) return;
+    }
+    clearResume();
+    var c = getCycle(range);
+    if (!c.everStarted) {
+      c.everStarted = true;
+      if (!c.lap) c.lap = 1;
+      saveProgress();
+    }
+    state.quiz.range = range;
+    state.quiz.current = passage;
+    state.quiz.aiResult = null;
+    state.quiz.graded = false;
+    state.quiz.finishSummary = null;
+    document.getElementById("passageId").textContent = passage.id;
+    document.getElementById("passageEn").innerHTML = renderPassageHtml(passage);
+    document.getElementById("wordMeaning").innerHTML = "";
+    document.getElementById("passageInput").value = "";
+    state.quiz.phase = "play";
+    saveResume(passage, range, "");
+    switchTab("quiz");
+  }
+
+  function returnToSetupWithResume() {
+    var q = state.quiz.current;
+    if (q) saveResume(q, state.quiz.range, document.getElementById("passageInput").value);
     state.quiz.current = null;
     state.quiz.phase = "setup";
     renderQuizPhase();
   }
 
-  document.getElementById("interruptBtn").addEventListener("click", discardCurrentQuestion);
+  document.getElementById("interruptBtn").addEventListener("click", returnToSetupWithResume);
 
   // ---------- Grading record ----------
   function buildLapSummary(range, doneIds) {
@@ -931,6 +1026,7 @@ nav.tabbar.is-hidden { display: none; }
     if (!q || state.quiz.graded) return;
     var answer = document.getElementById("passageInput").value;
     var lapCompleted = recordResult(q, state.quiz.range, grade, score, source, answer, aiResult || null);
+    clearResume();
     state.quiz.graded = true;
     document.getElementById("nextQuizBtn").style.display = "";
     var finishEl = document.getElementById("finishMsg");
@@ -1301,10 +1397,25 @@ nav.tabbar.is-hidden { display: none; }
     list.forEach(function (p) {
       var li = document.createElement("li");
       li.className = "passage-row";
+      li.setAttribute("role", "button");
+      li.setAttribute("tabindex", "0");
       li.innerHTML =
         '<div class="pr-head"><span class="pr-id">' + escapeHtml(p.id) + "</span>" +
         '<span class="pr-status">' + escapeHtml(passageStatusText(p)) + "</span></div>" +
-        '<div class="pr-en">' + escapeHtml(p.en) + "</div>";
+        '<div class="pr-en">' + escapeHtml(p.en) + "</div>" +
+        '<div class="pr-hint">この問題をやる</div>';
+      var go = function () {
+        var range = (state.list.range !== "ALL") ? state.list.range : ((p.ranges && p.ranges[0]) || RANGES[0]);
+        if (!range) return;
+        startQuizForPassage(p, range);
+      };
+      li.addEventListener("click", go);
+      li.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          go();
+        }
+      });
       ul.appendChild(li);
     });
   }
@@ -1389,6 +1500,22 @@ nav.tabbar.is-hidden { display: none; }
     }, 300);
   });
 
+  document.getElementById("passageInput").addEventListener("input", function (e) {
+    if (state.quiz.phase === "play" && state.quiz.current) {
+      saveResume(state.quiz.current, state.quiz.range, e.target.value);
+    }
+  });
+
+  function saveResumeIfPlaying() {
+    if (state.quiz.phase === "play" && state.quiz.current) {
+      saveResume(state.quiz.current, state.quiz.range, document.getElementById("passageInput").value);
+    }
+  }
+  window.addEventListener("pagehide", saveResumeIfPlaying);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") saveResumeIfPlaying();
+  });
+
   // ---------- Init ----------
   try {
     loadProgress();
@@ -1397,7 +1524,7 @@ nav.tabbar.is-hidden { display: none; }
   }
   applyTheme();
   document.getElementById("appbarSub").textContent = DATA_OK ? (PASSAGES.length + "問") : "";
-  switchTab("quiz");
+  switchTab("list");
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (r) { r.update(); }).catch(function () {});
