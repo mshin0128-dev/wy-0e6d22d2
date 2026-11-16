@@ -83,7 +83,7 @@ button { cursor: pointer; }
 button, a, input, select, textarea, label { touch-action: manipulation; }
 #app {
   min-height: 100vh;
-  padding-bottom: calc(96px + var(--safe-b) + var(--kb, 0px));
+  padding-bottom: calc(96px + var(--safe-b));
   max-width: 600px;
   margin: 0 auto;
   min-width: 0;
@@ -254,7 +254,7 @@ nav.tabbar {
   position: fixed;
   left: calc(12px + var(--safe-l));
   right: calc(12px + var(--safe-r));
-  bottom: var(--kb, 0px);
+  bottom: calc(8px + var(--safe-b));
   max-width: 456px;
   margin: 0 auto;
   display: flex;
@@ -262,10 +262,11 @@ nav.tabbar {
   background: var(--tabbar-bg);
   border: 1px solid var(--tabbar-border);
   border-radius: 28px;
-  padding: 6px 6px calc(6px + var(--safe-b));
+  padding: 6px;
   box-shadow: 0 10px 28px rgba(42,34,24,0.16);
   z-index: 200;
 }
+nav.tabbar.is-hidden { display: none; }
 .tab-btn {
   flex: 1; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; background: none; border: none; border-radius: 20px; color: var(--sub); padding: 4px 2px; min-width: 0;
@@ -476,7 +477,7 @@ nav.tabbar {
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16a</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.16b</p>
   </section>
 </div>
 
@@ -1351,22 +1352,32 @@ nav.tabbar {
     if (state.tab === "list") renderList();
   }
 
-  // ---------- Keyboard avoidance ----------
+  // ---------- Tabbar keyboard avoidance ----------
   (function () {
-    function updateKb() {
-      var kb = 0;
-      if (window.visualViewport) {
-        var vv = window.visualViewport;
-        kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      }
-      document.documentElement.style.setProperty("--kb", kb + "px");
+    var tabbarEl = document.getElementById("tabbar");
+    function isFormFocused() {
+      var el = document.activeElement;
+      if (!el) return false;
+      if (el.tagName === "TEXTAREA") return true;
+      if (el.tagName === "INPUT") return el.type !== "checkbox" && el.type !== "radio";
+      return false;
     }
+    function keyboardLikelyOpen() {
+      if (!window.visualViewport) return false;
+      var layoutHeight = document.documentElement.clientHeight || window.innerHeight;
+      return (layoutHeight - window.visualViewport.height) > 80;
+    }
+    function updateTabbarVisibility() {
+      var hide = isFormFocused() || keyboardLikelyOpen();
+      tabbarEl.classList.toggle("is-hidden", hide);
+    }
+    document.addEventListener("focusin", updateTabbarVisibility);
+    document.addEventListener("focusout", function () { setTimeout(updateTabbarVisibility, 0); });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", updateKb);
-      window.visualViewport.addEventListener("scroll", updateKb);
+      window.visualViewport.addEventListener("resize", updateTabbarVisibility);
+      window.visualViewport.addEventListener("scroll", updateTabbarVisibility);
     }
-    window.addEventListener("resize", updateKb);
-    updateKb();
+    window.addEventListener("resize", updateTabbarVisibility);
   })();
 
   document.getElementById("passageInput").addEventListener("focus", function () {
