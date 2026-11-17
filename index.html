@@ -539,18 +539,6 @@ nav.tabbar.is-hidden { display: none; }
       </div>
     </div>
     <div class="card" style="margin-bottom:16px;">
-      <div class="settings-row" style="flex-direction:column;align-items:stretch;">
-        <div class="st-label" style="margin-bottom:6px;">Gemini APIキー（予備）</div>
-        <div class="st-desc" style="margin-bottom:10px;">OpenAIのキーがないときだけ使います。キーがなくても自己採点で動作します。</div>
-        <input type="password" id="geminiKeyInput" autocomplete="off" placeholder="APIキーを入力" style="width:100%;min-height:44px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:0 14px;margin-bottom:10px;">
-        <div class="btn-row" style="margin-top:0;">
-          <button class="btn primary" id="geminiKeySaveBtn">保存</button>
-          <button class="btn" id="geminiKeyDeleteBtn" style="display:none;color:var(--danger);">削除</button>
-        </div>
-        <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
       <div class="settings-row">
         <div>
           <div class="st-label">学習記録リセット</div>
@@ -559,7 +547,7 @@ nav.tabbar.is-hidden { display: none; }
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.17c</p>
+    <p class="footer-note">データ出典：TOEIC単語帳<br>v2026.11.17d</p>
   </section>
 </div>
 
@@ -601,7 +589,6 @@ nav.tabbar.is-hidden { display: none; }
 
   var PROGRESS_KEY = "wayaku_progress_v1";
   var THEME_KEY = "wayaku_theme_pref";
-  var GEMINI_KEY = "wayaku_gemini_key";
   var OPENAI_KEY = "wayaku_openai_key";
 
   var DATA = (window.WAYAKU_DATA && typeof window.WAYAKU_DATA === "object") ? window.WAYAKU_DATA : {};
@@ -907,7 +894,7 @@ nav.tabbar.is-hidden { display: none; }
     if (name === "quiz") renderQuizPhase();
     if (name === "record") renderRecord();
     if (name === "list") renderList();
-    if (name === "settings") { refreshOpenaiKeyUI(); refreshGeminiKeyUI(); }
+    if (name === "settings") { refreshOpenaiKeyUI(); }
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function (btn) {
@@ -1399,11 +1386,7 @@ nav.tabbar.is-hidden { display: none; }
     });
   });
 
-  // ---------- Gemini AI grading ----------
-  function geminiKey() {
-    try { return localStorage.getItem(GEMINI_KEY) || ""; } catch (e) { return ""; }
-  }
-
+  // ---------- OpenAI AI grading ----------
   function buildGradePrompt(passage, answerText) {
     var vocabNos = uniqueWordbookNos(passage);
     var vocabLines = vocabNos.map(function (no) {
@@ -1444,41 +1427,6 @@ nav.tabbar.is-hidden { display: none; }
       "次のJSON形式だけで出力してください。説明文やコードフェンスは付けないでください。",
       "{\"score\": 0から100の整数, \"comment\": \"総評（短い日本語）\", \"fixes\": [{\"wrong\": \"学習者の訳の中の間違っている表現\", \"right\": \"模範訳から抜き出した正しい表現\", \"reason\": \"短い理由\", \"level\": \"wrong または minor\"}], \"understood\": [単語帳番号の配列]}"
     ].join("\n");
-  }
-
-  function callGemini(model, apiKey, promptText) {
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(apiKey);
-    var body = {
-      contents: [{ parts: [{ text: promptText }] }],
-      generationConfig: { responseMimeType: "application/json" }
-    };
-    return fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    }).then(function (res) {
-      if (!res.ok) {
-        var err = new Error("gemini http " + res.status);
-        err.status = res.status;
-        err.provider = "gemini";
-        throw err;
-      }
-      return res.json();
-    }).then(function (data) {
-      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content &&
-        data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-      return JSON.parse(text);
-    });
-  }
-
-  function gradeWithGemini(passage, answerText, apiKey) {
-    var promptText = buildGradePrompt(passage, answerText);
-    return callGemini("gemini-3.5-flash", apiKey, promptText).catch(function (e) {
-      if (e && e.status === 503) {
-        return callGemini("gemini-flash-latest", apiKey, promptText);
-      }
-      throw e;
-    });
   }
 
   function openaiKey() {
@@ -1770,13 +1718,12 @@ nav.tabbar.is-hidden { display: none; }
     renderVocabCheckCard(q);
 
     var openaiApiKey = openaiKey();
-    var geminiApiKey = geminiKey();
     var gradePromise;
     if (openaiApiKey) {
       gradePromise = gradeWithOpenAI(q, answer, openaiApiKey);
-    } else if (geminiApiKey) {
-      gradePromise = gradeWithGemini(q, answer, geminiApiKey);
     } else {
+      document.getElementById("aiNote").style.display = "";
+      document.getElementById("aiNote").textContent = "設定でOpenAIのAPIキーを入れてください。";
       showSelfGrade();
       return;
     }
@@ -1805,11 +1752,9 @@ nav.tabbar.is-hidden { display: none; }
       document.getElementById("aiNote").style.display = "";
       var msg = "AI採点を利用できませんでした。自己採点してください。";
       if (e && e.provider === "openai" && e.status === 401) {
-        msg = "APIキーが正しくありません。自己採点してください。";
+        msg = "APIキーが正しくありません（OpenAIで有効か確認して入れ直してください）。自己採点してください。";
       } else if (e && e.provider === "openai" && e.status === 429) {
         msg = "APIの利用上限か残高不足です。自己採点してください。";
-      } else if (e && e.provider === "gemini" && e.status === 429) {
-        msg = "今日の無料枠を使い切りました（17時ごろ回復）。自己採点してください。";
       }
       document.getElementById("aiNote").textContent = msg;
       showSelfGrade();
@@ -2133,28 +2078,6 @@ nav.tabbar.is-hidden { display: none; }
     refreshOpenaiKeyUI();
   });
 
-  // ---------- Gemini key settings ----------
-  function refreshGeminiKeyUI() {
-    var input = document.getElementById("geminiKeyInput");
-    var hasKey = !!geminiKey();
-    input.value = "";
-    document.getElementById("geminiKeyDeleteBtn").style.display = hasKey ? "" : "none";
-    document.getElementById("geminiKeyStatus").textContent = hasKey ? "保存済みのキーがあります" : "未設定です（なくても動作します）";
-  }
-
-  document.getElementById("geminiKeySaveBtn").addEventListener("click", function () {
-    var input = document.getElementById("geminiKeyInput");
-    var v = input.value.trim();
-    if (!v) return;
-    try { localStorage.setItem(GEMINI_KEY, v); } catch (e) {}
-    input.value = "";
-    refreshGeminiKeyUI();
-  });
-  document.getElementById("geminiKeyDeleteBtn").addEventListener("click", function () {
-    try { localStorage.removeItem(GEMINI_KEY); } catch (e) {}
-    refreshGeminiKeyUI();
-  });
-
   document.getElementById("resetBtn").addEventListener("click", function () {
     if (!window.confirm("学習記録を初期状態に戻します。よろしいですか？")) return;
     try { localStorage.removeItem(PROGRESS_KEY); } catch (e) {}
@@ -2225,6 +2148,11 @@ nav.tabbar.is-hidden { display: none; }
   });
 
   // ---------- Init ----------
+  // 旧Geminiキーを端末から削除
+  try {
+    localStorage.removeItem("wayaku_gemini_key");
+    localStorage.removeItem("tango_gemini_key");
+  } catch (e) {}
   try {
     loadProgress();
     runLapFixV1();
